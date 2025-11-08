@@ -67,7 +67,7 @@ public class SwingUtils {
     // 2. PERSISTÊNCIA DE DADOS (CSV)
     
     //Constante com o nome do arquivo
-    private static final String CSV_FILE = "alunos.csv";
+    private static final String CSV_FILE = "ListagemAlunos.csv";
     
     //Cabeçalhos das colunas do CSV
     private static final String[] HEADERS = { "Matricula", "Nome", "Idade", "DataNascimento", "Telefone", "CPF", "Index" }; 

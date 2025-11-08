@@ -3,6 +3,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package uespi.trabcons;
+import javax.swing.table.DefaultTableModel;
+import java.util.*;
+import javax.swing.event.*;
 
 /**
  *
@@ -21,12 +24,35 @@ public class TrabConsData extends javax.swing.JFrame {
         initComponents();
         // Configura o placeholder no campo de matrícula para pesquisa
         SwingUtils.configurarPlaceholder(matFieldData, "Ex: 12345678");
+        // (O seu estava como EXIT_ON_CLOSE[cite: 65], que fecha o app todo)
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+        @Override
+        public void windowClosed(java.awt.event.WindowEvent windowEvent) {
+            // "Desregistra" a janela quando ela for fechada
+            gerenciaAlunos.unregisterView();
+        }
+    });
+        listaFiltro.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                // 'getValueIsAdjusting' é 'true' enquanto o usuário
+                // está pressionando/arrastando o mouse.
+                // Só queremos atualizar UMA VEZ quando ele soltar.
+                if (!e.getValueIsAdjusting()) {
+                    // Quando a seleção mudar, chame atualizarTabela()
+                    atualizarTabela();
+                }
+            }
+        });
         
         // Exibe o tamanho da lista COMPARTILHADA no JTextPane
         displayQnt.setText(this.gerenciaAlunos.getTamanho());
         
+        
         // Chamada inicial para carregar os dados na tabela
-        // atualizarTabela(); // Este método precisa ser implementado
+        atualizarTabela(); // Recarregara a segunda tabela
+        this.gerenciaAlunos.registerView(this);
     }
 
     /**
@@ -92,6 +118,8 @@ public class TrabConsData extends javax.swing.JFrame {
             public int getSize() { return strings.length; }
             public String getElementAt(int i) { return strings[i]; }
         });
+        listaFiltro.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+        listaFiltro.setToolTipText("Lembre-se de clicar na opção!");
         listaFiltro.setVerifyInputWhenFocusTarget(false);
         listaFiltro.setVisibleRowCount(1);
         jScrollPane1.setViewportView(listaFiltro);
@@ -157,14 +185,15 @@ public class TrabConsData extends javax.swing.JFrame {
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(matFieldData, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel16)
-                        .addComponent(pesquisar)
-                        .addComponent(excluir)
-                        .addComponent(jLabel17)
-                        .addComponent(jLabel1)
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 26, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(matFieldData, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel16)
+                            .addComponent(pesquisar)
+                            .addComponent(excluir)
+                            .addComponent(jLabel17)
+                            .addComponent(jLabel1)))
                     .addComponent(jScrollPane2, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 476, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -207,11 +236,70 @@ public class TrabConsData extends javax.swing.JFrame {
     }//GEN-LAST:event_matFieldDataActionPerformed
 
     private void pesquisarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pesquisarActionPerformed
-        // TODO add your handling code here:
+          // 1. Pega o texto do campo de matrícula
+        String matricula = matFieldData.getText();
+        String placeholder = "Ex: 12345678";
+
+        // 2. Valida se o campo não está vazio ou com o placeholder
+        if (matricula.isEmpty() || matricula.equals(placeholder)) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Por favor, digite uma matrícula para pesquisar.",
+                "Campo Vazio",
+                javax.swing.JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 3. Chama o método de busca que criamos no 'gerenciaAlunos'
+        Aluno alunoEncontrado = this.gerenciaAlunos.buscarPorMatricula(matricula);
+
+        // 4. Verifica o resultado
+        if (alunoEncontrado == null) {
+            // Caso NÃO encontre o aluno
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "Nenhum aluno encontrado com a matrícula: " + matricula,
+                "Não Encontrado",
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+        } else {
+            // Caso ENCONTRE o aluno, formata e exibe os detalhes
+            String detalhes = "--- Aluno Encontrado ---\n\n" +
+                "Nome: " + alunoEncontrado.getNome() + "\n" +
+                "Matrícula: " + alunoEncontrado.getMatricula() + "\n" +
+                "Data Nasc.: " + alunoEncontrado.getDataNascimentoFormatadaCsv() + "\n" +
+                "Idade: " + alunoEncontrado.getIdade() + "\n" +
+                "CPF: " + alunoEncontrado.getCpf() + "\n" +
+                "Telefone: " + alunoEncontrado.getTelefone();
+
+            javax.swing.JOptionPane.showMessageDialog(this,
+                detalhes,
+                "Resultado da Pesquisa",
+                javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        }
+
+        // 5. Limpa o campo de texto após a pesquisa
+        matFieldData.setText("");
+        SwingUtils.configurarPlaceholder(matFieldData, placeholder); // Recarrega o placeholder
     }//GEN-LAST:event_pesquisarActionPerformed
 
     private void excluirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_excluirActionPerformed
-        // TODO add your handling code here:
+         // 1. Pega a matrícula do campo de texto
+        String matricula = matFieldData.getText();
+
+        // 2. Validação simples
+        if (matricula.isEmpty() || matricula.equals("Ex: 12345678")) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Por favor, digite uma matrícula para excluir.", "Erro", javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 3. Apenas chama a exclusão.
+        // O método excluirAluno() agora vai notificar esta janela
+        // para que ela se atualize (via atualizarTudo()).
+        this.gerenciaAlunos.excluirAluno(matricula);
+
+        // 4. Limpa o campo de texto
+        matFieldData.setText("");
+        
+        // 5. Reaplica o placeholder
+        SwingUtils.configurarPlaceholder(matFieldData, "Ex: 12345678"); 
     }//GEN-LAST:event_excluirActionPerformed
 
     public static void Table(listaAlunos gerenciaAlunos) {
@@ -221,6 +309,77 @@ public class TrabConsData extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(() -> new TrabConsData(gerenciaAlunos).setVisible(true));
     }
 
+    /**
+     * Preenche a JTable 'tabela' com os dados mais recentes 
+     * da lista 'gerenciaAlunos'.
+     */
+    private void atualizarTabela() {
+        // 1. Define os nomes das colunas
+        String[] colunas = {"Nome", "Matricula", "Data de Nacimento", "CPF"};
+
+        // 2. Cria um DefaultTableModel, iniciando com 0 linhas.
+        DefaultTableModel model = new DefaultTableModel(colunas, 0);
+
+        
+        // --- INÍCIO DA LÓGICA DE FILTRO/ORDENAÇÃO ---
+        
+        // 3. Pega a lista original
+        List<Aluno> listaOriginal = this.gerenciaAlunos.listaAlunos;
+        
+        // 4. Cria uma CÓPIA MUTÁVEL para exibir (para não bagunçar a original)
+        List<Aluno> alunosParaExibir = new ArrayList<>(listaOriginal);
+
+        // 5. Verifica o que está selecionado no filtro
+        String filtroSelecionado = listaFiltro.getSelectedValue();// 
+
+        if (filtroSelecionado != null) {
+            
+            if (filtroSelecionado.equals("Mais Novo")) { 
+            // "Mais novo" = maior data de nascimento (ordem decrescente)
+                alunosParaExibir.sort(Comparator.comparing(
+                aluno -> aluno.getDataNascimento(), // <-- MUDANÇA AQUI
+                Comparator.nullsLast(Comparator.reverseOrder())
+            ));
+               
+            } else if (filtroSelecionado.equals("Mais Velho")) { 
+                // "Mais velho" = menor data de nascimento (ordem crescente)
+                alunosParaExibir.sort(Comparator.comparing(
+                aluno -> aluno.getDataNascimento(), // <-- MUDANÇA AQUI
+                Comparator.nullsLast(Comparator.naturalOrder())
+                ));
+            }
+        }
+        // Se nada estiver selecionado, 'alunosParaExibir' 
+        // permanece na ordem original (da lista principal)
+        
+        // --- FIM DA LÓGICA DE FILTRO ---
+
+
+        // 6. Itera sobre a lista JÁ FILTRADA/ORDENADA
+        for (Aluno aluno : alunosParaExibir) { // <-- MUDANÇA IMPORTANTE AQUI
+            
+            // Cria um array de Objetos para a linha
+            Object[] row = {
+                aluno.getNome(),
+                aluno.getMatricula(),
+                aluno.getDataNascimentoFormatadaCsv(), //
+                aluno.getCpf()
+            };
+            
+            // Adiciona a linha ao modelo
+            model.addRow(row);
+        }
+
+        // 7. Finalmente, define este modelo populado na sua JTable
+        tabela.setModel(model);
+    }
+    
+   
+    public void atualizarTudo() {
+        atualizarTabela();
+        displayQnt.setText(this.gerenciaAlunos.getTamanho());
+    }
+    
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextPane displayQnt;
     private javax.swing.JButton excluir;

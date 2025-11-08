@@ -22,6 +22,15 @@ import org.hibernate.query.Query;
 class listaAlunos {
     
     public final java.util.List<Aluno> listaAlunos;
+    private TrabConsData dataView = null;
+    
+    public void registerView(TrabConsData view) {
+        this.dataView = view;
+    }
+    
+     public void unregisterView() {
+        this.dataView = null;
+    }
     
     // Construtor: Carrega a lista do BANCO DE DADOS ao iniciar.
     public listaAlunos() {
@@ -50,6 +59,7 @@ class listaAlunos {
         }
     }
     
+    
     /**
      * MÉTODO MODIFICADO: Cadastra o aluno no BANCO DE DADOS e no CSV.
      */
@@ -64,6 +74,12 @@ class listaAlunos {
             String telefone = tele.getText();
             String cpf = cpfs.getText();
             
+            if (cpf.equals("   .   .   -  ")) {
+                javax.swing.JOptionPane.showMessageDialog(null, "O campo CPF é obrigatório.", "Erro de Validação", javax.swing.JOptionPane.ERROR_MESSAGE);
+                return; // Para a execução do cadastro
+            }
+
+            
             if (dataNascimento == null) {
                 throw new java.text.ParseException("Data não pode ser nula", 0);
             }
@@ -74,22 +90,42 @@ class listaAlunos {
 
             // 2. CRIA O OBJETO ALUNO
             Aluno novoAluno = new Aluno(matricula, nome, idade, dataNascimento, telefone, cpf, index); 
-
+               
             // 3. PERSISTÊNCIA COM HIBERNATE (BANCO DE DADOS)
             Transaction transaction = null;
             try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+                 // VALIDAÇÃO 2: CHECA CPF DUPLICADO NO BANCO
+                // Precisamos checar ANTES de tentar salvar.
+                Query<Aluno> queryCpf = session.createQuery(
+                    "FROM Aluno WHERE cpf = :cpfDoAluno", Aluno.class
+                );
+                queryCpf.setParameter("cpfDoAluno", cpf);
+                
+                // uniqueResult() retorna um Aluno se encontrar, ou null se não.
+                Aluno alunoComMesmoCpf = queryCpf.uniqueResult(); 
+
+                if (alunoComMesmoCpf != null) {
+                    // Se encontrou um aluno, o CPF já está em uso.
+                    javax.swing.JOptionPane.showMessageDialog(null, 
+                        "Erro: O CPF '" + cpf + "' já está sendo utilizado pelo aluno: " + alunoComMesmoCpf.getNome(), 
+                        "CPF Duplicado", 
+                        javax.swing.JOptionPane.ERROR_MESSAGE);
+                    return; // Para a execução do cadastro
+                }
                 transaction = session.beginTransaction();
                 session.persist(novoAluno); 
                 transaction.commit();
 
                 // 4. Se a transação foi bem-sucedida, atualiza a lista em memória
                 this.listaAlunos.add(novoAluno);
-                
+                if (this.dataView != null) {
+                    this.dataView.atualizarTudo();
+                }
                 // 5. AGORA, SALVA TAMBÉM NO CSV (COMO ANTES)
                 try {
                     SwingUtils.salvarAlunosEmCsv(this.listaAlunos);
                     javax.swing.JOptionPane.showMessageDialog(null, "Aluno salvo com SUCESSO no MySQL e no CSV!");
-                
+                    
                 } catch (IOException ioEx) {
                     // Se o banco salvou mas o CSV falhou, avisa o usuário
                     javax.swing.JOptionPane.showMessageDialog(null, 
@@ -115,7 +151,7 @@ class listaAlunos {
                 javax.swing.JOptionPane.showMessageDialog(null, "Erro ao salvar no banco de dados: " + e.getMessage(), "Erro de Banco de Dados", javax.swing.JOptionPane.ERROR_MESSAGE);
                 e.printStackTrace();
             }
-
+            
         // --- Blocos de Tratamento de Exceções Originais ---
         } catch (NumberFormatException e) {
             javax.swing.JOptionPane.showMessageDialog(null, "Erro de Conversão: Idade ou Index deve ser um número válido.", "Erro de Formato", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -168,6 +204,10 @@ class listaAlunos {
             // 2. Se deu certo, remove da lista em memória
             this.listaAlunos.remove(alunoParaExcluir);
             
+            if (this.dataView != null) {
+                this.dataView.atualizarTudo();
+            }
+            
             // 3. Tenta atualizar o CSV
             try {
                 SwingUtils.salvarAlunosEmCsv(this.listaAlunos);
@@ -184,5 +224,22 @@ class listaAlunos {
             javax.swing.JOptionPane.showMessageDialog(null, "Erro ao excluir aluno do banco: " + e.getMessage(), "Erro de Banco de Dados", javax.swing.JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Busca um aluno na lista em memória pela matrícula.
+     *
+     * @param matricula A matrícula a ser procurada.
+     * @return O objeto Aluno se encontrado, ou null se não.
+     */
+    public Aluno buscarPorMatricula(String matricula) {
+        // Itera sobre a lista 'listaAlunos'
+        for (Aluno aluno : this.listaAlunos) {
+            // Compara a matrícula de cada aluno com a matrícula fornecida
+            if (aluno.getMatricula().equals(matricula)) {
+                return aluno; // Retorna o aluno se encontrar
+            }
+        }
+        return null; // Retorna null se o loop terminar sem encontrar
     }
 }

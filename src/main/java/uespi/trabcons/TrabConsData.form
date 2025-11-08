@@ -97,14 +97,16 @@
                       <Group type="102" attributes="0">
                           <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                              <Group type="103" groupAlignment="3" attributes="0">
-                                  <Component id="matFieldData" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel16" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="pesquisar" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="excluir" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel17" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  <Component id="jLabel1" alignment="3" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="jScrollPane1" alignment="1" min="-2" pref="26" max="-2" attributes="0"/>
+                                  <Group type="103" groupAlignment="3" attributes="0">
+                                      <Component id="matFieldData" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel16" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="pesquisar" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="excluir" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel17" alignment="3" min="-2" max="-2" attributes="0"/>
+                                      <Component id="jLabel1" alignment="3" max="-2" attributes="0"/>
+                                  </Group>
                               </Group>
                               <Component id="jScrollPane2" alignment="1" min="-2" max="-2" attributes="0"/>
                           </Group>
@@ -157,6 +159,8 @@
                             <StringItem index="1" value="Mais Velho"/>
                           </StringArray>
                         </Property>
+                        <Property name="selectionMode" type="int" value="1"/>
+                        <Property name="toolTipText" type="java.lang.String" value="Lembre-se de clicar na op&#xe7;&#xe3;o!"/>
                         <Property name="verifyInputWhenFocusTarget" type="boolean" value="false"/>
                         <Property name="visibleRowCount" type="int" value="1"/>
                       </Properties>
