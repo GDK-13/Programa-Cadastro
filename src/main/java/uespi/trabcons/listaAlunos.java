@@ -1,99 +1,131 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package uespi.trabcons;
 
 import java.awt.HeadlessException;
 import java.io.File;
-import java.io.IOException;
+import java.io.IOException; // RE-ADICIONADO: Necessário para salvar o CSV
 import java.util.Date;
+import java.util.List;
 import javax.swing.JFormattedTextField;
 import javax.swing.JTextField;
 
-/**
- *
- * @author GDK13
- */
+// --- NOVAS IMPORTAÇÕES DO HIBERNATE ---
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.query.Query;
 
+/**
+ * @author GDK13
+ * * (MODIFICADO) Esta classe gerencia os alunos usando o
+ * Hibernate (MySQL) E também salva um backup no arquivo CSV.
+ */
 class listaAlunos {
-    // 1. Apenas declara a lista como final (será inicializada no construtor).
+    
     public final java.util.List<Aluno> listaAlunos;
     
-    // Construtor: Carrega a lista do CSV ao iniciar.
+    // Construtor: Carrega a lista do BANCO DE DADOS ao iniciar.
     public listaAlunos() {
-        // 2. Inicializa a lista em TODOS os caminhos (obrigatório para campos 'final').
-        if (new File("alunos.csv").exists()) {
-             // Chama o carregamento do CSV (tenta ler dados persistidos)
-             this.listaAlunos = SwingUtils.carregarAlunosDoCsv();
-        } else {
-             // Se o arquivo não existe, inicializa com uma lista vazia.
-             this.listaAlunos = new java.util.LinkedList<>();
+        this.listaAlunos = carregarAlunosDoBanco();
+    }
+    
+    /**
+     * NOVO MÉTODO: Carrega todos os alunos do banco de dados MySQL
+     * usando Hibernate.
+     */
+    private java.util.List<Aluno> carregarAlunosDoBanco() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Query<Aluno> query = session.createQuery("FROM Aluno", Aluno.class);
+            System.out.println("Carregando alunos do banco de dados...");
+            return query.list();
+        } catch (Exception e) {
+            System.err.println("Erro grave ao carregar alunos do banco: " + e.getMessage());
+            e.printStackTrace();
+            // Tenta carregar do CSV como um fallback de emergência
+            if (new File("alunos.csv").exists()) {
+                System.err.println("Tentando carregar do CSV como fallback...");
+                return SwingUtils.carregarAlunosDoCsv();
+            }
+            // Se tudo falhar, retorna uma lista vazia
+            return new java.util.LinkedList<>(); 
         }
     }
     
+    /**
+     * MÉTODO MODIFICADO: Cadastra o aluno no BANCO DE DADOS e no CSV.
+     */
     public void cadastrar(JTextField nomes, JTextField ind, JTextField matr, JTextField idades, JFormattedTextField datan, JFormattedTextField tele, JFormattedTextField cpfs){
-    try {
-            // 1. CAPTURA DE DADOS E CONVERSÃO DE TIPOS PRIMITIVOS
+        try {
+            // 1. CAPTURA E PARSING (Sua lógica original)
             String matricula = matr.getText();
             String nome = nomes.getText();
-            
-            // Validação e conversão da Data de Nascimento
-            Object dateValue = datan.getValue();
-            if (dateValue == null) {
-                 throw new java.text.ParseException("Data de Nascimento não pode ser vazia.", 0);
-            }
-            Date dataNascimentoDat = (Date) dateValue;
-            
-            // Conversão de campos numéricos (idade e índice)
             int idade = Integer.parseInt(idades.getText());
             int index = Integer.parseInt(ind.getText());
-
-            // Captura de campos formatados
+            Date dataNascimento = (Date) datan.getValue();
             String telefone = tele.getText();
             String cpf = cpfs.getText();
-
-            // 2. CRIAÇÃO DO OBJETO ALUNO
-            Aluno novoAluno = new Aluno(matricula, nome, idade, dataNascimentoDat, telefone, cpf, index);
             
-            // Validação de Matrícula Única (usando o método equals() da classe Aluno)
-            if (this.listaAlunos.contains(novoAluno)) {
-                 javax.swing.JOptionPane.showMessageDialog(null, 
-                        "Erro: Já existe um aluno com a matrícula " + matricula + " na lista.", 
-                        "Matrícula Duplicada", javax.swing.JOptionPane.ERROR_MESSAGE);
-                throw new IllegalArgumentException("Matrícula Duplicada");
+            if (dataNascimento == null) {
+                throw new java.text.ParseException("Data não pode ser nula", 0);
             }
-            
-            // Inserção na Posição (mantém a lógica de inserir no final se o índice for inválido)
-            if (index < 0 || index > this.listaAlunos.size()) {
+            if (matricula.trim().isEmpty() || nome.trim().isEmpty()) {
+                 javax.swing.JOptionPane.showMessageDialog(null, "Matrícula e Nome são obrigatórios.", "Erro de Validação", javax.swing.JOptionPane.ERROR_MESSAGE);
+                 return;
+            }
+
+            // 2. CRIA O OBJETO ALUNO
+            Aluno novoAluno = new Aluno(matricula, nome, idade, dataNascimento, telefone, cpf, index); 
+
+            // 3. PERSISTÊNCIA COM HIBERNATE (BANCO DE DADOS)
+            Transaction transaction = null;
+            try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+                transaction = session.beginTransaction();
+                session.persist(novoAluno); 
+                transaction.commit();
+
+                // 4. Se a transação foi bem-sucedida, atualiza a lista em memória
                 this.listaAlunos.add(novoAluno);
-                javax.swing.JOptionPane.showMessageDialog(null, "Aluno adicionado no final (índice " + this.listaAlunos.size() + ").", "Sucesso", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                this.listaAlunos.add(index, novoAluno); 
-                javax.swing.JOptionPane.showMessageDialog(null, "Aluno adicionado na posição " + index + ".", "Sucesso", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                
+                // 5. AGORA, SALVA TAMBÉM NO CSV (COMO ANTES)
+                try {
+                    SwingUtils.salvarAlunosEmCsv(this.listaAlunos);
+                    javax.swing.JOptionPane.showMessageDialog(null, "Aluno salvo com SUCESSO no MySQL e no CSV!");
+                
+                } catch (IOException ioEx) {
+                    // Se o banco salvou mas o CSV falhou, avisa o usuário
+                    javax.swing.JOptionPane.showMessageDialog(null, 
+                        "Aluno salvo no MySQL com SUCESSO.\n\nFALHA ao salvar backup no CSV: " + ioEx.getMessage(), 
+                        "Aviso de Backup", 
+                        javax.swing.JOptionPane.WARNING_MESSAGE);
+                }
+
+                // 6. Limpa os campos da GUI
+                nomes.setText("");
+                matr.setText("");
+                idades.setText("");
+                datan.setValue(null);
+                tele.setText("");
+                cpfs.setText("");
+                ind.setText("");
+
+            } catch (ConstraintViolationException e) {
+                if (transaction != null) transaction.rollback();
+                javax.swing.JOptionPane.showMessageDialog(null, "Erro: Matrícula '" + matricula + "' já existe no banco de dados.", "Matrícula Duplicada", javax.swing.JOptionPane.ERROR_MESSAGE);
+            } catch (Exception e) {
+                if (transaction != null) transaction.rollback();
+                javax.swing.JOptionPane.showMessageDialog(null, "Erro ao salvar no banco de dados: " + e.getMessage(), "Erro de Banco de Dados", javax.swing.JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
             }
-            
-            //SALVAMENTO. Persiste a lista atualizada no CSV.
-            SwingUtils.salvarAlunosEmCsv(this.listaAlunos); 
 
-            // Atualizar a Tabela (chamada será feita externamente pela classe de GUI)
-            // atualizarTabela();
-
-        // --- Blocos de Tratamento de Exceções ---
+        // --- Blocos de Tratamento de Exceções Originais ---
         } catch (NumberFormatException e) {
-            // Tratamento para falha na conversão de Idade ou Index
             javax.swing.JOptionPane.showMessageDialog(null, "Erro de Conversão: Idade ou Index deve ser um número válido.", "Erro de Formato", javax.swing.JOptionPane.ERROR_MESSAGE);
         } catch (java.text.ParseException e) {
-            // Tratamento para falha na data
             javax.swing.JOptionPane.showMessageDialog(null, "Erro: A data de nascimento deve ser fornecida.", "Erro de Data", javax.swing.JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException e) {
-             // Tratamento da exceção de Matrícula Duplicada
+             // Tratamento da exceção de Matrícula Duplicada (se houver)
         } 
-        // Tratamento de erro de I/O: Captura exceções relançadas por SwingUtils.salvarAlunosEmCsv
-        catch (IOException e) { 
-            javax.swing.JOptionPane.showMessageDialog(null, "Erro ao salvar dados CSV: " + e.getMessage(), "Erro de I/O", javax.swing.JOptionPane.ERROR_MESSAGE);
-        }
-        // Tratamento de exceções relacionadas ao ambiente gráfico
+        // Não precisamos mais do catch (IOException e) aqui fora, 
+        // pois ele está sendo tratado dentro do try-catch do Hibernate.
         catch (HeadlessException e) {
             javax.swing.JOptionPane.showMessageDialog(null, "Erro de GUI ao cadastrar aluno: " + e.getMessage(), "Erro", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
@@ -104,5 +136,53 @@ class listaAlunos {
      */
     public String getTamanho(){
         return String.valueOf(listaAlunos.size());
+    }
+    
+    // --- MÉTODOS DE EXCLUSÃO (TAMBÉM ATUALIZADO) ---
+
+    /**
+     * Exclui um aluno do banco de dados, da lista local e do CSV.
+     */
+    public void excluirAluno(String matricula) {
+        Aluno alunoParaExcluir = null;
+        
+        for (Aluno a : listaAlunos) {
+            if (a.getMatricula().equals(matricula)) {
+                alunoParaExcluir = a;
+                break;
+            }
+        }
+        
+        if (alunoParaExcluir == null) {
+            javax.swing.JOptionPane.showMessageDialog(null, "Aluno com matrícula " + matricula + " não encontrado na lista.", "Erro", javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 1. Exclui do banco de dados
+        Transaction transaction = null;
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            transaction = session.beginTransaction();
+            session.remove(alunoParaExcluir); 
+            transaction.commit();
+            
+            // 2. Se deu certo, remove da lista em memória
+            this.listaAlunos.remove(alunoParaExcluir);
+            
+            // 3. Tenta atualizar o CSV
+            try {
+                SwingUtils.salvarAlunosEmCsv(this.listaAlunos);
+                javax.swing.JOptionPane.showMessageDialog(null, "Aluno " + matricula + " excluído com sucesso do MySQL e do CSV.");
+            } catch (IOException ioEx) {
+                javax.swing.JOptionPane.showMessageDialog(null, 
+                    "Aluno excluído do MySQL com SUCESSO.\n\nFALHA ao atualizar o CSV: " + ioEx.getMessage(), 
+                    "Aviso de Backup", 
+                    javax.swing.JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (Exception e) {
+            if (transaction != null) transaction.rollback();
+            javax.swing.JOptionPane.showMessageDialog(null, "Erro ao excluir aluno do banco: " + e.getMessage(), "Erro de Banco de Dados", javax.swing.JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
     }
 }
