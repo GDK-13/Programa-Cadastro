@@ -1,7 +1,7 @@
 package uespi.trabcons;
 
-import java.text.ParseException; // Necessário para a exceção lançada no construtor (embora a lógica de parsing esteja fora)
-import java.text.SimpleDateFormat; // Necessário para formatar a data para o CSV/Exibição
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.io.Serializable;
 
@@ -14,51 +14,67 @@ import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.Transient;
 
+/**
+ * Esta é a nossa classe principal: Aluno.
+ *
+ * O "@Entity" diz ao Hibernate (o cara que salva no banco) que esta classe
+ * é uma tabela no banco de dados.
+ * O "@Table" especifica o nome dessa tabela, que é "alunos".
+ */
 @Entity
 @Table(name = "alunos")
 public class Aluno implements Serializable {
-    
-    // --- Atributos de Estado do Aluno ---
-    
+
+    // --- Atributos de Estado do Aluno (Colunas da Tabela) ---
+
+    /**
+     * @Id: Marca este campo como a chave primária (o identificador único)
+     * da tabela.
+     * @Column: Especifica que o nome da coluna no banco é "matricula".
+     */
     @Id
     @Column(name = "matricula")
-    private String matricula; // Chave primária (única)
-    
+    private String matricula; // A matrícula é a chave primária.
+
     @Column(name = "nome")
     private String nome;
-    
+
     @Column(name = "idade")
     private int idade;
-    
+
+    /**
+     * @Temporal(TemporalType.DATE): Diz ao Hibernate para guardar só a data,
+     * ignorando a hora (tipo DATE no SQL).
+     * @Column: Coluna no banco chamada "data_nascimento".
+     */
     @Temporal(TemporalType.DATE)
     @Column(name = "data_nascimento")
-    private Date dataNascimento; // Usado para armazenar a data internamente
-    
+    private Date dataNascimento; // Usamos Date para guardar a data internamente.
+
     @Column(name = "telefone")
     private String telefone;
-    
+
     @Column(name = "cpf")
     private String cpf;
-    
-    @Transient
-    private int index; // Usado para controle de posição na lista (em tempo de execução)
-    
+
     /**
-     * Construtor padrão (vazio) exigido pelo Hibernate.
+     * @Transient: Esta anotação diz ao Hibernate para **ignorar** este campo.
+     * Ele não vai para o banco de dados. É só para uso em tempo de execução
+     * (por exemplo, para controlar a posição em uma lista).
+     */
+    @Transient
+    private int index; // Usado para controle de posição na lista em tempo de execução.
+
+    /**
+     * Construtor padrão (vazio). O Hibernate precisa dele para criar objetos
+     * quando lê os dados do banco.
      */
     public Aluno() {
     }
 
     /**
-     * Construtor para criar um novo Aluno.
-     * @param matricula
-     * @param nome
-     * @param idade
-     * @param dataNascimentoDat
-     * @param telefone
-     * @param cpf
-     * @param index
-     * @throws java.text.ParseException
+     * Construtor completo para criar um Aluno do zero.
+     * Ele recebe todos os dados e joga nas váriaveis da classe.
      */
     public Aluno(String matricula, String nome, int idade, Date dataNascimentoDat, String telefone, String cpf, int index) throws ParseException {
         this.matricula = matricula;
@@ -69,46 +85,71 @@ public class Aluno implements Serializable {
         this.cpf = cpf;
         this.index = index;
     }
-    
-    // Sobrescrita essencial para verificar Matrículas Duplicadas na listaAlunos (usado por List.contains())
+
+    /**
+     * Sobrescrita do 'equals()'. É crucial!
+     *
+     * Permite que a gente compare dois objetos Aluno. Eles são considerados
+     * iguais se tiverem a **mesma matrícula**. Isso é muito útil para verificar
+     * se você já tem um aluno com aquela matrícula em uma lista.
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         Aluno aluno = (Aluno) obj;
-        // Duas matrículas são iguais se a string da matrícula for a mesma.
+        // A comparação se baseia só na string da matrícula.
         return matricula.equals(aluno.matricula);
     }
-    
-    // Sobrescrita essencial para manter a consistência com equals (usado por estruturas hash)
+
+    /**
+     * Sobrescrita do 'hashCode()'.
+     *
+     * Tem que ser feita junto com o 'equals()' para que o java saiba onde
+     * guardar e como buscar este objeto em estruturas de dados mais rápidas
+     * (tipo HashMaps). Ele usa a matrícula para gerar um código único.
+     */
     @Override
     public int hashCode() {
-        return matricula.hashCode(); // Baseia o hash code na matrícula, garantindo unicidade.
+        return matricula.hashCode(); // Usa o código da matrícula para o hash.
     }
-    
-    // Formatador estático (único) para garantir que o CSV use o formato "dd/MM/yyyy"
+
+    /**
+     * O 'SimpleDateFormat' é o formato de data que a gente vai usar para
+     * exportar para CSV ou mostrar na tela. Ele é estático e 'transient'
+     * (não vai para o banco) para ser compartilhado por todos os alunos.
+     * O formato escolhido é "dd/mm/yyyy".
+     */
     @Transient
     private static final SimpleDateFormat CSV_DATE_FORMAT = new SimpleDateFormat("dd/MM/yyyy");
-    
-    // Sobrescrita padrão para representação em String (útil para debug ou JList)
+
+    /**
+     * Sobrescrita do 'toString()'.
+     *
+     * Define como o objeto Aluno deve ser exibido como uma string,
+     * o que é útil para debug ou para colocar o objeto diretamente em
+     * um componente de lista (como um JList).
+     */
     @Override
     public String toString() {
-        // Chama o novo método de formatação para exibir a data de forma amigável
         return String.format("Matrícula: %s | Nome: %s | Idade: %d | Data Nasc.: %s",
                 matricula, nome, idade, getDataNascimentoFormatadaCsv());
     }
-    
-    // Método auxiliar que retorna a data no formato Date.toString()
+
+    // Método auxiliar (parece redundânte, mas talvez tenha sido criado pra algum propósito específico)
     public String Data(){
         return String.format("%s", dataNascimento);
     }
 
-    
-    // Métodos Getters e Setters
+
+    // --- Métodos Getters e Setters (para acessar e alterar os atributos) ---
+
+    // Este é um dos poucos setters que existe
     public void setMatricula(String matricula) {
         this.matricula = matricula;
     }
 
+    // Getters e Setters para o restante das propriedades
     public String getNome() {
         return nome;
     }
@@ -124,15 +165,19 @@ public class Aluno implements Serializable {
     public void setIdade(int idade) {
         this.idade = idade;
     }
-    
+
     public Date getDataNascimento() {
         return dataNascimento;
     }
 
-    // Getter para fins de persistência/caminho de código antigo que usa Date.toString()
+    /**
+     * Getter extra para a data. Ele retorna a data formatada
+     * usando o 'Date.toString()' padrão do java, o que normalmente
+     * não é o ideal, mas tá aqui pra compatibilidade.
+     */
     @Transient
     public String getDataNascimentoFormatada() {
-        return dataNascimento.toString(); 
+        return dataNascimento.toString();
     }
 
     public void setDataNascimento(Date dataNascimento) {
@@ -154,28 +199,34 @@ public class Aluno implements Serializable {
     public void setCpf(String cpf) {
         this.cpf = cpf;
     }
-    
+
     public String getMatricula() {
         return matricula;
-    }   
-    
+    }
+
     public int getIndex(){
         return index;
     }
-    
+
     public void setIndex(int index){
         this.index = index;
     }
-    
-    //Getter final para uso no salvamento/exibição do CSV (garante formato dd/MM/yyyy)
+
+    /**
+     * Getter mais importante para data!
+     *
+     * Retorna a data de nascimento no formato **dd/MM/yyyy**.
+     * É o formato certo para salvar em arquivos CSV ou para
+     * exibir ao úsuario.
+     */
     @Transient
     public String getDataNascimentoFormatadaCsv() {
-        // Tenta formatar a data
+        // Tenta formatar. Se a data for nula ou algo der erro,
+        // retorna a mensagem de erro.
         try {
             return CSV_DATE_FORMAT.format(this.dataNascimento);
         } catch (Exception e) {
-            // Retorna uma string de erro se a data for nula ou inválida
-            return "Data Inválida";
+            return "Data Inválida"; // Mensagem de erro.
         }
     }
 }

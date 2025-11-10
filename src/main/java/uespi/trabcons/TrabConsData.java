@@ -8,50 +8,52 @@ import java.util.*;
 import javax.swing.event.*;
 
 /**
- *
- * @author GDK13
+ * Janela de visualização e manipulação dos dados de Aluno (Tabela, Pesquisa, Exclusão).
+ * Ela opera sobre uma única instância de 'listaAlunos'.
  */
 public class TrabConsData extends javax.swing.JFrame {
-    
-    // Agora é final e não inicializada aqui
+
+    // Referência obrigatória ao gerenciador de dados. É 'final' porque não pode mudar.
     private final listaAlunos gerenciaAlunos;
-    
-    // Novo construtor que RECEBE a instância
+
+    // Construtor: RECEBE a instância do gerenciador de dados.
     public TrabConsData(listaAlunos gerenciaAlunos) {
-        // Atribui a instância compartilhada
-        this.gerenciaAlunos = gerenciaAlunos; 
-        
+        // Atribui a instância para que esta janela possa usá-la.
+        this.gerenciaAlunos = gerenciaAlunos;
+
         initComponents();
-        // Configura o placeholder no campo de matrícula para pesquisa
+        // Configura o texto de dica no campo de matrícula.
         SwingUtils.configurarPlaceholder(matFieldData, "Ex: 12345678");
-        // (O seu estava como EXIT_ON_CLOSE[cite: 65], que fecha o app todo)
+
+        // Define o comportamento de fechamento: Apenas fecha esta janela (DISPOSE), não o programa inteiro.
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+
+        // Adiciona um listener para a janela.
         addWindowListener(new java.awt.event.WindowAdapter() {
         @Override
         public void windowClosed(java.awt.event.WindowEvent windowEvent) {
-            // "Desregistra" a janela quando ela for fechada
+            // Quando a janela é fechada, ela informa ao gerenciador que não presiza mais ser notificada.
             gerenciaAlunos.unregisterView();
         }
     });
+        
+        // Adiciona um listener ao JList (o filtro).
         listaFiltro.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
-                // 'getValueIsAdjusting' é 'true' enquanto o usuário
-                // está pressionando/arrastando o mouse.
-                // Só queremos atualizar UMA VEZ quando ele soltar.
+                // Executa a atualização da tabela apenas quando o usuário solta o mouse.
                 if (!e.getValueIsAdjusting()) {
-                    // Quando a seleção mudar, chame atualizarTabela()
-                    atualizarTabela();
+                    atualizarTabela(); // Recarrega a tabela com a nova ordem.
                 }
             }
         });
-        
-        // Exibe o tamanho da lista COMPARTILHADA no JTextPane
+
+        // Exibe o número total de alunos no campo de texto.
         displayQnt.setText(this.gerenciaAlunos.getTamanho());
-        
-        
-        // Chamada inicial para carregar os dados na tabela
-        atualizarTabela(); // Recarregara a segunda tabela
+
+        // Carregamento inicial dos dados na tabela.
+        atualizarTabela();
+        // Registra esta janela no gerenciador para receber atualizações futuras.
         this.gerenciaAlunos.registerView(this);
     }
 
@@ -291,8 +293,6 @@ public class TrabConsData extends javax.swing.JFrame {
         }
 
         // 3. Apenas chama a exclusão.
-        // O método excluirAluno() agora vai notificar esta janela
-        // para que ela se atualize (via atualizarTudo()).
         this.gerenciaAlunos.excluirAluno(matricula);
 
         // 4. Limpa o campo de texto
@@ -321,12 +321,12 @@ public class TrabConsData extends javax.swing.JFrame {
         DefaultTableModel model = new DefaultTableModel(colunas, 0);
 
         
-        // --- INÍCIO DA LÓGICA DE FILTRO/ORDENAÇÃO ---
+        // --FILTRO/ORDENAÇÃO ---
         
         // 3. Pega a lista original
         List<Aluno> listaOriginal = this.gerenciaAlunos.listaAlunos;
         
-        // 4. Cria uma CÓPIA MUTÁVEL para exibir (para não bagunçar a original)
+        // 4. Cria uma copia mutavel para exibir (para não bagunçar a original)
         List<Aluno> alunosParaExibir = new ArrayList<>(listaOriginal);
 
         // 5. Verifica o que está selecionado no filtro
@@ -352,11 +352,11 @@ public class TrabConsData extends javax.swing.JFrame {
         // Se nada estiver selecionado, 'alunosParaExibir' 
         // permanece na ordem original (da lista principal)
         
-        // --- FIM DA LÓGICA DE FILTRO ---
 
 
-        // 6. Itera sobre a lista JÁ FILTRADA/ORDENADA
-        for (Aluno aluno : alunosParaExibir) { // <-- MUDANÇA IMPORTANTE AQUI
+
+        // 6. Itera sobre a lista ja filtrada
+        for (Aluno aluno : alunosParaExibir) {
             
             // Cria um array de Objetos para a linha
             Object[] row = {
@@ -370,7 +370,7 @@ public class TrabConsData extends javax.swing.JFrame {
             model.addRow(row);
         }
 
-        // 7. Finalmente, define este modelo populado na sua JTable
+        // 7.define este modelo populado na sua JTable
         tabela.setModel(model);
     }
     

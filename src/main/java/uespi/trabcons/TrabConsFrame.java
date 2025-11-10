@@ -6,22 +6,23 @@ package uespi.trabcons;
 
 
 /**
- * @author GDK13
+ * Janela principal da aplicação, dedicada ao cadastro de novos alunos.
  */
 public class TrabConsFrame extends javax.swing.JFrame {
+    // Logger padrão, usado para registrar poblemas internos.
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(TrabConsFrame.class.getName());
-    
-    // Agora é final e não inicializada aqui
+
+    // Referência obrigatória ao gerenciador de dados. É 'final' para garantir que seja a instância única.
     private final listaAlunos gerenciaAlunos;
-    
-    // Novo construtor que RECEBE a instância
+
+    // Construtor: RECEBE a instância do gerenciador de dados.
     public TrabConsFrame(listaAlunos gerenciaAlunos) {
-        // Atribui a instância compartilhada
+        // A instância compartilhada é atribuida.
         this.gerenciaAlunos = gerenciaAlunos;
 
         initComponents();
+        // Configuração dos textos de dica (placeholders) nos campos de entrada.
         SwingUtils.configurarPlaceholder(matFieldCad, "Ex: 12345678");
-        // ... (restante da configuração dos placeholders)
         SwingUtils.configurarPlaceholder(nomeField, "Ex: Marcelo Melo Pinto");
         SwingUtils.configurarPlaceholder(idadeField, "Ex: 18");
         SwingUtils.configurarPlaceholder(indexField, "Ex: 1");
@@ -246,13 +247,16 @@ public class TrabConsFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_proximaPagActionPerformed
 
     private void addAlunoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addAlunoActionPerformed
+        // Ação do botão "Adicionar Aluno".
+        // Todos os campos de texto da interface são passados
+        // para o método 'cadastrar' do gerenciador de alunos.
         this.gerenciaAlunos.cadastrar(
-                nomeField, 
-                indexField, 
-                matFieldCad, 
-                idadeField, 
-                nascField, 
-                teleField, 
+                nomeField,
+                indexField,
+                matFieldCad,
+                idadeField,
+                nascField,
+                teleField,
                 cpfField
         );
     }//GEN-LAST:event_addAlunoActionPerformed
